@@ -492,8 +492,8 @@
 
   async function startBot(botId) {
     try {
-      const { bot } = await apiFetch(`/api/bots/${botId}/start`, { method: 'POST' });
-      showToast(`${bot.name || 'Bot'} started successfully`, 'success');
+      await apiFetch(`/api/bots/${botId}/start`, { method: 'POST' });
+      showToast('Bot started successfully', 'success');
       await refreshDashboard();
     } catch (err) {
       showToast(err.message || 'Failed to start bot', 'error');
@@ -502,8 +502,8 @@
 
   async function stopBot(botId) {
     try {
-      const { bot } = await apiFetch(`/api/bots/${botId}/stop`, { method: 'POST' });
-      showToast(`${bot.name || 'Bot'} stopped`, 'info');
+      await apiFetch(`/api/bots/${botId}/stop`, { method: 'POST' });
+      showToast('Bot stopped', 'info');
       await refreshDashboard();
     } catch (err) {
       showToast(err.message || 'Failed to stop bot', 'error');
@@ -512,8 +512,8 @@
 
   async function restartBot(botId) {
     try {
-      const { bot } = await apiFetch(`/api/bots/${botId}/restart`, { method: 'POST' });
-      showToast(`${bot.name || 'Bot'} restarted`, 'success');
+      await apiFetch(`/api/bots/${botId}/restart`, { method: 'POST' });
+      showToast('Bot restarted', 'success');
       await refreshDashboard();
     } catch (err) {
       showToast(err.message || 'Failed to restart bot', 'error');
