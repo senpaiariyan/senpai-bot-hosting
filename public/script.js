@@ -677,7 +677,7 @@
       }
 
       const formData = new FormData();
-      formData.append('botFile', file);
+      formData.append('file', file);
 
       const result = await apiFetch('/api/upload', {
         method: 'POST',
