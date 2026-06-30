@@ -524,30 +524,24 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             const zip = new AdmZip(req.file.path);
             zip.extractAllTo(botDir, true);
 
-            // Check if zip created a single wrapper directory
-            const entries = fs.readdirSync(botDir);
-            if (entries.length === 1) {
-                const singleDir = path.join(botDir, entries[0]);
-                if (fs.statSync(singleDir).isDirectory()) {
-                    // Move contents up one level safely
-                    const inner = fs.readdirSync(singleDir);
-                    for (const item of inner) {
-                        const src = path.join(singleDir, item);
-                        const dest = path.join(botDir, item);
-                        try {
-                            // Remove destination if it already exists
-                            if (fs.existsSync(dest)) {
-                                fs.rmSync(dest, { recursive: true, force: true });
-                            }
-                            fs.renameSync(src, dest);
-                        } catch (moveErr) {
-                            // If rename fails, copy recursively then delete
-                            fs.cpSync(src, dest, { recursive: true, force: true });
-                            fs.rmSync(src, { recursive: true, force: true });
+            // Unwrap single wrapper directories (handles multiple nesting levels)
+            let unwrapped = true;
+            while (unwrapped) {
+                unwrapped = false;
+                const entries = fs.readdirSync(botDir);
+                if (entries.length === 1) {
+                    const singleDir = path.join(botDir, entries[0]);
+                    if (fs.existsSync(singleDir) && fs.statSync(singleDir).isDirectory()) {
+                        // Move wrapper to temp sibling, then move contents back
+                        const tempDir = botDir + '_unwrap_temp_' + Date.now();
+                        fs.renameSync(singleDir, tempDir);
+                        const innerContents = fs.readdirSync(tempDir);
+                        for (const item of innerContents) {
+                            fs.renameSync(path.join(tempDir, item), path.join(botDir, item));
                         }
+                        fs.rmSync(tempDir, { recursive: true, force: true });
+                        unwrapped = true; // Check again for another wrapper level
                     }
-                    // Remove the now-empty wrapper dir
-                    try { fs.rmSync(singleDir, { recursive: true, force: true }); } catch { /* ignore */ }
                 }
             }
 
