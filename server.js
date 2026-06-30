@@ -276,7 +276,7 @@ async function autoInstallDeps(botId, botDir, entryPoint) {
     if (hasReqs) {
         addLog(botId, '[AUTO-INSTALL] Found requirements.txt — installing dependencies ...');
         await new Promise((resolve) => {
-            const proc = spawn(PIP_CMD, ['install', '-r', 'requirements.txt', '--quiet', '--disable-pip-version-check'], {
+            const proc = spawn(PIP_CMD, ['install', '-r', 'requirements.txt', '--quiet', '--disable-pip-version-check', '--break-system-packages'], {
                 cwd: botDir,
                 shell: true
             });
@@ -310,7 +310,7 @@ async function autoInstallDeps(botId, botDir, entryPoint) {
         const pkg = IMPORT_TO_PACKAGE[mod] || mod;
         addLog(botId, `[AUTO-INSTALL] Missing '${mod}' — installing '${pkg}' ...`);
         await new Promise((resolve) => {
-            const proc = spawn(PIP_CMD, ['install', pkg, '--quiet', '--disable-pip-version-check'], {
+            const proc = spawn(PIP_CMD, ['install', pkg, '--quiet', '--disable-pip-version-check', '--break-system-packages'], {
                 cwd: botDir,
                 shell: true
             });
