@@ -529,12 +529,25 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             if (entries.length === 1) {
                 const singleDir = path.join(botDir, entries[0]);
                 if (fs.statSync(singleDir).isDirectory()) {
-                    // Move contents up one level
+                    // Move contents up one level safely
                     const inner = fs.readdirSync(singleDir);
                     for (const item of inner) {
-                        fs.renameSync(path.join(singleDir, item), path.join(botDir, item));
+                        const src = path.join(singleDir, item);
+                        const dest = path.join(botDir, item);
+                        try {
+                            // Remove destination if it already exists
+                            if (fs.existsSync(dest)) {
+                                fs.rmSync(dest, { recursive: true, force: true });
+                            }
+                            fs.renameSync(src, dest);
+                        } catch (moveErr) {
+                            // If rename fails, copy recursively then delete
+                            fs.cpSync(src, dest, { recursive: true, force: true });
+                            fs.rmSync(src, { recursive: true, force: true });
+                        }
                     }
-                    fs.rmdirSync(singleDir);
+                    // Remove the now-empty wrapper dir
+                    try { fs.rmSync(singleDir, { recursive: true, force: true }); } catch { /* ignore */ }
                 }
             }
 
