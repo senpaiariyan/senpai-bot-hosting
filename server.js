@@ -236,7 +236,7 @@ try {
 
 // ─── Detect entry point in a directory ───────────────────────────────────────
 function detectEntryPoint(dir) {
-    const priority = ['main.py', 'bot.py', 'app.py', 'index.py'];
+    const priority = ['bot.py', 'main.py', 'app.py', 'index.py', 'run.py'];
     for (const name of priority) {
         if (fs.existsSync(path.join(dir, name))) return name;
     }
@@ -357,12 +357,38 @@ async function startBot(bot) {
     // Auto-install dependencies
     await autoInstallDeps(bot.id, botDir, bot.entryPoint);
 
+    // Load .env file if present in bot directory
+    let botEnv = { ...process.env, PYTHONUNBUFFERED: '1' };
+    const envFilePath = path.join(botDir, '.env');
+    if (fs.existsSync(envFilePath)) {
+        try {
+            const envContent = fs.readFileSync(envFilePath, 'utf-8');
+            const envLines = envContent.split('\n');
+            for (const line of envLines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+                const eqIndex = trimmed.indexOf('=');
+                if (eqIndex === -1) continue;
+                const key = trimmed.substring(0, eqIndex).trim();
+                let value = trimmed.substring(eqIndex + 1).trim();
+                // Remove surrounding quotes
+                if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                    value = value.slice(1, -1);
+                }
+                botEnv[key] = value;
+            }
+            addLog(bot.id, `[SENPAI] Loaded .env file (${Object.keys(botEnv).length - Object.keys(process.env).length - 1} variables)`);
+        } catch (envErr) {
+            addLog(bot.id, `[SENPAI] ⚠ Failed to parse .env: ${envErr.message}`);
+        }
+    }
+
     // Spawn the Python process
     addLog(bot.id, `[SENPAI] Starting ${bot.entryPoint} ...`);
     const child = spawn(PYTHON_CMD, ['-u', bot.entryPoint], {
         cwd: botDir,
         shell: true,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        env: botEnv
     });
 
     processes.set(bot.id, child);
