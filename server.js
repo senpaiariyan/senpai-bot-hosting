@@ -385,10 +385,12 @@ async function startBot(bot) {
 
     // Spawn the Python process
     addLog(bot.id, `[SENPAI] Starting ${bot.entryPoint} ...`);
+    const isWin = process.platform === 'win32';
     const child = spawn(PYTHON_CMD, ['-u', bot.entryPoint], {
         cwd: botDir,
         shell: true,
-        env: botEnv
+        env: botEnv,
+        detached: !isWin  // Linux: create process group for clean kill
     });
 
     processes.set(bot.id, child);
@@ -430,41 +432,26 @@ async function startBot(bot) {
 }
 
 // ─── Stop a bot process ──────────────────────────────────────────────────────
+const stoppingBots = new Set();
+
 function stopBot(bot) {
     return new Promise((resolve) => {
+        // Prevent duplicate stop calls
+        if (stoppingBots.has(bot.id)) return resolve();
+        stoppingBots.add(bot.id);
+
         const child = processes.get(bot.id);
         if (!child) {
             bot.status = 'stopped';
             saveBots();
             broadcastStatus(bot.id, 'stopped');
+            stoppingBots.delete(bot.id);
             return resolve();
         }
 
         addLog(bot.id, '[SENPAI] Stopping bot ...');
 
-        let killed = false;
-        const forceKill = setTimeout(() => {
-            if (!killed) {
-                try { child.kill('SIGKILL'); } catch { /* ignore */ }
-                addLog(bot.id, '[SENPAI] Force-killed (SIGKILL)');
-            }
-        }, 5000);
-
-        child.on('close', () => {
-            killed = true;
-            clearTimeout(forceKill);
-            resolve();
-        });
-
-        try {
-            // On Windows, SIGTERM doesn't work well — use taskkill
-            if (process.platform === 'win32') {
-                spawn('taskkill', ['/pid', child.pid.toString(), '/f', '/t'], { shell: true });
-            } else {
-                child.kill('SIGTERM');
-            }
-        } catch {
-            clearTimeout(forceKill);
+        const cleanup = () => {
             processes.delete(bot.id);
             bot.status = 'stopped';
             if (bot.uptimeStart) {
@@ -473,8 +460,36 @@ function stopBot(bot) {
             bot.uptimeStart = null;
             saveBots();
             broadcastStatus(bot.id, 'stopped');
+            stoppingBots.delete(bot.id);
             resolve();
-        }
+        };
+
+        // Kill the entire process tree
+        try {
+            const pid = child.pid;
+            if (process.platform === 'win32') {
+                spawn('taskkill', ['/pid', pid.toString(), '/f', '/t'], { shell: true });
+            } else {
+                // Kill process group on Linux
+                try { process.kill(-pid, 'SIGKILL'); } catch {
+                    try { child.kill('SIGKILL'); } catch { /* ignore */ }
+                    // Also try pkill to kill any orphan python processes
+                    spawn('pkill', ['-P', pid.toString()], { shell: true });
+                }
+            }
+        } catch { /* ignore */ }
+
+        // Wait for close event or force cleanup after timeout
+        const forceCleanup = setTimeout(() => {
+            addLog(bot.id, '[SENPAI] Force cleanup');
+            cleanup();
+        }, 3000);
+
+        child.once('close', () => {
+            clearTimeout(forceCleanup);
+            addLog(bot.id, '[SENPAI] Bot stopped.');
+            cleanup();
+        });
     });
 }
 
