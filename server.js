@@ -506,6 +506,45 @@ function deleteBotDir(dir) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
+const PANEL_PASSWORD = process.env.PANEL_PASSWORD || 'senpai123';
+const AUTH_COOKIE_NAME = 'senpai_auth';
+const AUTH_COOKIE_VALUE = 'authenticated';
+
+// Auth Login Route (unprotected)
+app.post('/api/login', (req, res) => {
+    if (req.body.password === PANEL_PASSWORD) {
+        res.cookie(AUTH_COOKIE_NAME, AUTH_COOKIE_VALUE, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, error: 'Incorrect password' });
+    }
+});
+
+// Auth Logout Route (unprotected)
+app.post('/api/logout', (req, res) => {
+    res.clearCookie(AUTH_COOKIE_NAME);
+    res.json({ success: true });
+});
+
+// Auth Middleware for static files and API
+app.use((req, res, next) => {
+    if (req.path === '/login.html' || req.path === '/api/login') {
+        return next();
+    }
+    
+    if (req.cookies[AUTH_COOKIE_NAME] === AUTH_COOKIE_VALUE) {
+        return next();
+    }
+    
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    } else {
+        return res.redirect('/login.html');
+    }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Multer config
