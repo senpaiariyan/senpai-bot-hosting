@@ -611,22 +611,54 @@ app.get('/api/system', (_req, res) => {
                     diskUsage.percentage = Math.round(((total - free) / total) * 100);
                 }
             } else {
+                let total = 0, used = 0;
                 const output = execSync('df -B1 / | tail -1', { encoding: 'utf8' }).trim().split(/\s+/);
                 if (output.length > 3) {
-                    const total = parseInt(output[1]);
-                    const used = parseInt(output[2]);
-                    diskUsage.totalGB = (total / (1024 ** 3)).toFixed(1);
-                    diskUsage.usedGB = (used / (1024 ** 3)).toFixed(1);
-                    diskUsage.percentage = Math.round((used / total) * 100);
+                    total = parseInt(output[1]);
+                    used = parseInt(output[2]);
                 }
+                
+                // If running on a massive shared host (like HF Spaces), use container limits
+                if (process.env.SPACE_ID || total > (200 * 1024 * 1024 * 1024)) {
+                    total = 50 * 1024 * 1024 * 1024; // 50 GB free tier space limit
+                    try {
+                        const du = execSync('du -sb /app 2>/dev/null', { encoding: 'utf8' }).trim().split(/\s+/)[0];
+                        if (du) used = parseInt(du);
+                    } catch(e) {}
+                }
+                
+                diskUsage.totalGB = (total / (1024 ** 3)).toFixed(1);
+                diskUsage.usedGB = (used / (1024 ** 3)).toFixed(1);
+                diskUsage.percentage = Math.round((used / total) * 100);
             }
         } catch(e) {}
+        
+        // Accurate CPU Usage for container apps
+        let cpuUsage = 0;
+        try {
+            if (process.platform === 'linux') {
+                const psOutput = execSync("ps -eo pcpu,command | grep -E 'node|python' | grep -v grep", { encoding: 'utf8' });
+                const lines = psOutput.trim().split('\\n');
+                lines.forEach(line => {
+                    const match = line.trim().match(/^([0-9.]+)/);
+                    if (match) {
+                        cpuUsage += parseFloat(match[1]);
+                    }
+                });
+                cpuUsage = Math.round(cpuUsage);
+            } else {
+                cpuUsage = Math.round(os.loadavg()[0] * 100 / os.cpus().length) || 0;
+            }
+        } catch(e) {
+            cpuUsage = Math.round(os.loadavg()[0] * 100 / os.cpus().length) || 0;
+        }
+        if (cpuUsage > 100) cpuUsage = 100;
         
         res.json({
             platform: `${os.type()} ${os.arch()}`,
             nodeVersion: process.version,
             pythonVersion: pythonVersion,
-            cpuUsage: Math.round(os.loadavg()[0] * 100 / os.cpus().length) || 0,
+            cpuUsage: cpuUsage,
             memory: {
                 totalGB: (totalMem / (1024 ** 3)).toFixed(1),
                 usedGB: (usedMem / (1024 ** 3)).toFixed(1),
