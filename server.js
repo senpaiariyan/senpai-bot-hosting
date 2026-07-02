@@ -12,6 +12,8 @@ const { spawn, execSync } = require('child_process');
 const AdmZip = require('adm-zip');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
+const os = require('os');
+const cookieParser = require('cookie-parser');
 
 // ─── Paths & Constants ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
@@ -514,6 +516,64 @@ const upload = multer({
         const ext = path.extname(file.originalname).toLowerCase();
         if (ext === '.py' || ext === '.zip') cb(null, true);
         else cb(new Error('Only .py and .zip files are allowed'));
+    }
+});
+
+// ─── GET /api/system ─────────────────────────────────────────────────────────
+app.get('/api/system', (_req, res) => {
+    try {
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        
+        // Python version
+        let pythonVersion = 'Unknown';
+        try {
+            const pyOutput = execSync(`${PIP_CMD.replace('pip', 'python')} --version`, { encoding: 'utf8' });
+            pythonVersion = pyOutput.replace('Python', '').trim();
+        } catch(e) {}
+        
+        // Disk usage estimation (root volume)
+        let diskUsage = { percentage: 0, usedGB: 0, totalGB: 0 };
+        try {
+            if (process.platform === 'win32') {
+                const output = execSync('wmic logicaldisk get size,freespace /format:csv', { encoding: 'utf8' });
+                const lines = output.split('\n').filter(l => l.includes(','));
+                if (lines.length > 1) {
+                    const parts = lines[1].split(',');
+                    const free = parseInt(parts[1]);
+                    const total = parseInt(parts[2]);
+                    diskUsage.totalGB = (total / (1024 ** 3)).toFixed(1);
+                    diskUsage.usedGB = ((total - free) / (1024 ** 3)).toFixed(1);
+                    diskUsage.percentage = Math.round(((total - free) / total) * 100);
+                }
+            } else {
+                const output = execSync('df -B1 / | tail -1', { encoding: 'utf8' }).trim().split(/\s+/);
+                if (output.length > 3) {
+                    const total = parseInt(output[1]);
+                    const used = parseInt(output[2]);
+                    diskUsage.totalGB = (total / (1024 ** 3)).toFixed(1);
+                    diskUsage.usedGB = (used / (1024 ** 3)).toFixed(1);
+                    diskUsage.percentage = Math.round((used / total) * 100);
+                }
+            }
+        } catch(e) {}
+        
+        res.json({
+            platform: `${os.type()} ${os.arch()}`,
+            nodeVersion: process.version,
+            pythonVersion: pythonVersion,
+            cpuUsage: Math.round(os.loadavg()[0] * 100 / os.cpus().length) || 0,
+            memory: {
+                totalGB: (totalMem / (1024 ** 3)).toFixed(1),
+                usedGB: (usedMem / (1024 ** 3)).toFixed(1),
+                percentage: Math.round((usedMem / totalMem) * 100)
+            },
+            disk: diskUsage,
+            uptime: process.uptime()
+        });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

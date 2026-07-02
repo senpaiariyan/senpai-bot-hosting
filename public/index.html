@@ -219,43 +219,43 @@
             <div class="card-header"><h2 class="card-title"><i class="fas fa-server"></i> System Information</h2></div>
             <div class="card-body">
               <div class="admin-info-grid">
-                <div class="admin-info-item">
-                  <span class="admin-info-label">Platform</span>
-                  <span class="admin-info-value">Windows x64</span>
-                </div>
-                <div class="admin-info-item">
-                  <span class="admin-info-label">Node Version</span>
-                  <span class="admin-info-value">v20.11.0</span>
-                </div>
-                <div class="admin-info-item">
-                  <span class="admin-info-label">Python Version</span>
-                  <span class="admin-info-value">3.12.1</span>
-                </div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">Platform</span>
+                    <span class="admin-info-value" id="sys-platform">Windows x64</span>
+                  </div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">Node Version</span>
+                    <span class="admin-info-value" id="sys-node-version">v20.11.0</span>
+                  </div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">Python Version</span>
+                    <span class="admin-info-value" id="sys-python-version">3.12.1</span>
+                  </div>
                 <div class="admin-info-item">
                   <span class="admin-info-label">Uptime</span>
                   <span class="admin-info-value" id="admin-uptime">—</span>
                 </div>
-                <div class="admin-info-item">
-                  <span class="admin-info-label">CPU Usage</span>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar progress-bar--green" style="width:23%"></div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">CPU Usage</span>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar progress-bar--green" id="sys-cpu-bar" style="width:23%"></div>
+                    </div>
+                    <span class="admin-info-value" id="sys-cpu-text">23%</span>
                   </div>
-                  <span class="admin-info-value">23%</span>
-                </div>
-                <div class="admin-info-item">
-                  <span class="admin-info-label">Memory Usage</span>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar progress-bar--amber" style="width:61%"></div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">Memory Usage</span>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar progress-bar--amber" id="sys-mem-bar" style="width:61%"></div>
+                    </div>
+                    <span class="admin-info-value" id="sys-mem-text">61% (1.2 GB / 2 GB)</span>
                   </div>
-                  <span class="admin-info-value">61% (1.2 GB / 2 GB)</span>
-                </div>
-                <div class="admin-info-item">
-                  <span class="admin-info-label">Disk Usage</span>
-                  <div class="progress-bar-container">
-                    <div class="progress-bar progress-bar--red" style="width:74%"></div>
+                  <div class="admin-info-item">
+                    <span class="admin-info-label">Disk Usage</span>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar progress-bar--red" id="sys-disk-bar" style="width:74%"></div>
+                    </div>
+                    <span class="admin-info-value" id="sys-disk-text">74% (14.8 GB / 20 GB)</span>
                   </div>
-                  <span class="admin-info-value">74% (14.8 GB / 20 GB)</span>
-                </div>
               </div>
             </div>
           </div>

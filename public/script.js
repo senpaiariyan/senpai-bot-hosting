@@ -1036,7 +1036,33 @@
     // Placeholder – extend as needed for admin features
     try {
       const stats = await apiFetch('/api/stats');
-      // Admin page could show additional system info
+      const sys = await apiFetch('/api/system');
+      
+      const el = (id) => document.getElementById(id);
+      
+      if(sys) {
+          if(el('sys-platform')) el('sys-platform').textContent = sys.platform;
+          if(el('sys-node-version')) el('sys-node-version').textContent = sys.nodeVersion;
+          if(el('sys-python-version')) el('sys-python-version').textContent = sys.pythonVersion;
+          
+          if(el('sys-cpu-bar')) el('sys-cpu-bar').style.width = `${sys.cpuUsage}%`;
+          if(el('sys-cpu-text')) el('sys-cpu-text').textContent = `${sys.cpuUsage}%`;
+          
+          if(el('sys-mem-bar')) el('sys-mem-bar').style.width = `${sys.memory.percentage}%`;
+          if(el('sys-mem-text')) el('sys-mem-text').textContent = `${sys.memory.percentage}% (${sys.memory.usedGB} GB / ${sys.memory.totalGB} GB)`;
+          
+          if(el('sys-disk-bar') && sys.disk) {
+              el('sys-disk-bar').style.width = `${sys.disk.percentage}%`;
+              if(el('sys-disk-text')) el('sys-disk-text').textContent = `${sys.disk.percentage}% (${sys.disk.usedGB} GB / ${sys.disk.totalGB} GB)`;
+          }
+          
+          if(el('admin-uptime')) {
+              const days = Math.floor(sys.uptime / 86400);
+              const hours = Math.floor((sys.uptime % 86400) / 3600);
+              const mins = Math.floor((sys.uptime % 3600) / 60);
+              el('admin-uptime').textContent = `${days}d ${hours}h ${mins}m`;
+          }
+      }
     } catch (err) {
       console.error('Failed to load admin data:', err);
     }
