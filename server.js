@@ -561,9 +561,33 @@ const upload = multer({
 // ─── GET /api/system ─────────────────────────────────────────────────────────
 app.get('/api/system', (_req, res) => {
     try {
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const usedMem = totalMem - freeMem;
+        let totalMem = os.totalmem();
+        let freeMem = os.freemem();
+        let usedMem = totalMem - freeMem;
+        
+        // Attempt to get accurate Docker container memory from cgroups (Linux only)
+        if (process.platform === 'linux') {
+            try {
+                if (fs.existsSync('/sys/fs/cgroup/memory.max')) {
+                    // cgroup v2
+                    const max = fs.readFileSync('/sys/fs/cgroup/memory.max', 'utf8').trim();
+                    if (max !== 'max') {
+                        totalMem = parseInt(max, 10);
+                        const current = fs.readFileSync('/sys/fs/cgroup/memory.current', 'utf8').trim();
+                        usedMem = parseInt(current, 10);
+                    }
+                } else if (fs.existsSync('/sys/fs/cgroup/memory/memory.limit_in_bytes')) {
+                    // cgroup v1
+                    const limit = fs.readFileSync('/sys/fs/cgroup/memory/memory.limit_in_bytes', 'utf8').trim();
+                    if (parseInt(limit, 10) < 9000000000000000000) { // Check if it's not the unlimited default
+                        totalMem = parseInt(limit, 10);
+                        const current = fs.readFileSync('/sys/fs/cgroup/memory/memory.usage_in_bytes', 'utf8').trim();
+                        usedMem = parseInt(current, 10);
+                    }
+                }
+            } catch(e) {}
+        }
+
         
         // Python version
         let pythonVersion = 'Unknown';
