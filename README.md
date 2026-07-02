@@ -1,3 +1,11 @@
+---
+title: SENPAI Bot Hosting
+emoji: 🚀
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 3000
+---
 # 🔥 SENPAI — Discord Bot Hosting Panel
 
 Premium dark-themed web panel for uploading, managing, and monitoring Discord bots.
