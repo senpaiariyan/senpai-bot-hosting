@@ -342,12 +342,15 @@ async function startBot(bot) {
         throw new Error(`Entry point not found: ${bot.entryPoint}`);
     }
 
+    const isNodeBot = bot.entryPoint.endsWith('.js');
+
     // Startup banner
     const now = new Date();
     const ts = now.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
     addLog(bot.id, '════════════════════════════════════════════════════');
     addLog(bot.id, `START  ${ts}`);
     addLog(bot.id, `FILE   ${entryPath}`);
+    addLog(bot.id, `TYPE   ${isNodeBot ? 'Node.js Bot' : 'Python Bot'}`);
     addLog(bot.id, '[AUTO-INSTALL enabled]');
     addLog(bot.id, '════════════════════════════════════════════════════');
 
@@ -357,7 +360,32 @@ async function startBot(bot) {
     broadcastStatus(bot.id, 'pending');
 
     // Auto-install dependencies
-    await autoInstallDeps(bot.id, botDir, bot.entryPoint);
+    if (isNodeBot) {
+        if (fs.existsSync(path.join(botDir, 'package.json'))) {
+            addLog(bot.id, `[AUTO-INSTALL] Found package.json, running npm install ...`);
+            await new Promise((resolve) => {
+                const proc = spawn('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error'], {
+                    cwd: botDir,
+                    shell: true
+                });
+                proc.stdout.on('data', d => addLog(bot.id, d.toString().trimEnd()));
+                proc.stderr.on('data', d => addLog(bot.id, d.toString().trimEnd()));
+                proc.on('close', (code) => {
+                    if (code === 0) addLog(bot.id, `[AUTO-INSTALL] ✓ Node.js packages installed!`);
+                    else addLog(bot.id, `[AUTO-INSTALL] ⚠ npm install failed (exit ${code})`);
+                    resolve();
+                });
+                proc.on('error', (err) => {
+                    addLog(bot.id, `[AUTO-INSTALL] ✗ Error running npm: ${err.message}`);
+                    resolve();
+                });
+            });
+        } else {
+            addLog(bot.id, `[AUTO-INSTALL] No package.json found. Skipping npm install.`);
+        }
+    } else {
+        await autoInstallDeps(bot.id, botDir, bot.entryPoint);
+    }
 
     // Load .env file if present in bot directory
     let botEnv = { ...process.env, PYTHONUNBUFFERED: '1' };
@@ -385,10 +413,13 @@ async function startBot(bot) {
         }
     }
 
-    // Spawn the Python process
-    addLog(bot.id, `[SENPAI] Starting ${bot.entryPoint} ...`);
+    // Spawn the bot process
     const isWin = process.platform === 'win32';
-    const child = spawn(PYTHON_CMD, ['-u', bot.entryPoint], {
+    const spawnCmd = isNodeBot ? 'node' : PYTHON_CMD;
+    const spawnArgs = isNodeBot ? [bot.entryPoint] : ['-u', bot.entryPoint];
+    
+    addLog(bot.id, `[SENPAI] Starting ${bot.entryPoint} using ${spawnCmd} ...`);
+    const child = spawn(spawnCmd, spawnArgs, {
         cwd: botDir,
         shell: true,
         env: botEnv,
