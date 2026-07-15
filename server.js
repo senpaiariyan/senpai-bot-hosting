@@ -238,13 +238,15 @@ try {
 
 // ─── Detect entry point in a directory ───────────────────────────────────────
 function detectEntryPoint(dir) {
-    const priority = ['bot.py', 'main.py', 'app.py', 'index.py', 'run.py'];
+    const priority = ['bot.js', 'index.js', 'main.js', 'bot.py', 'main.py', 'app.py', 'index.py', 'run.py'];
     for (const name of priority) {
         if (fs.existsSync(path.join(dir, name))) return name;
     }
-    // Fallback: first .py file
+    // Fallback: first .js or .py file
     try {
         const files = fs.readdirSync(dir);
+        const jsFile = files.find(f => f.endsWith('.js'));
+        if (jsFile) return jsFile;
         const pyFile = files.find(f => f.endsWith('.py'));
         if (pyFile) return pyFile;
     } catch { /* ignore */ }
